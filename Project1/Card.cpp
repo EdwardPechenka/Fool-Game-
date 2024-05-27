@@ -51,3 +51,13 @@ void Card::setIsInAction(bool value)
 {
 	this->isInAction = value;
 }
+
+bool Card::getIsHitted() const 
+{
+	return this->isHitted;
+}
+
+void Card::setIsHitted(bool value) 
+{
+	this->isHitted = value;
+}

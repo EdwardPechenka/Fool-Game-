@@ -8,7 +8,7 @@ enum class Suit {
 };
 
 enum class Rank {
-    Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King
+   Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King,
 };
 
 class Card
@@ -30,13 +30,16 @@ public:
 	bool getIsInAction() const;
 	void setIsInAction(bool value);
 
+	bool getIsHitted() const;
+	void setIsHitted(bool value);
+
 private:
 	Sprite* sprite;
 	Suit suit;
 	Rank rank;
 	bool isGiven = false;
 	bool isInAction = false;
-
+	bool isHitted = false;
 
 
 
