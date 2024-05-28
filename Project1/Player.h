@@ -1,36 +1,27 @@
 #pragma once
-#include <vector>
+
 #include "Card.h"
+#include "Array.h"
 
 using namespace std;
 
 
 class Player
 {
-public:
-	Player(int x, int y);
-	~Player();
+public:                    
+	//Coordinate user
+	Player(int x, int y) : x(x), y(y) {}
+	~Player() {}
 
-	vector <Card*> & getCards();
+	Array<Card*>& getCards() {
+		return cards;
+	}
 
 	int x;
 	int y;
 
 
 private:
-	vector <Card*> cards;
+	Array<Card*> cards;
 };
 
-Player::Player(int x, int y)
-{
-	this->x = x;
-	this->y = y;
-}
-
-Player::~Player()
-{
-}
-
-vector <Card*> & Player::getCards() {
-	return this->cards;
-}

@@ -1,293 +1,333 @@
 #include <iostream>
-#include <SFML/Graphics.hpp>
+#include "SFML/Graphics.hpp"
 #include "Card.h"
-#include "Button.h"
 #include "Player.h"
+#include "Array.h"
+#include "Button.h"
+
 #define _BOARD_MIN_X 330
-#define _BOARD_MAX_X 930 
-#define _BOARD_MAX_Y 470
+#define _BOARD_MAX_X 930
 #define _BOARD_MIN_Y 275
+#define _BOARD_MAX_Y 470
 #define _CARD_HEIGHT 110
 #define _CARD_WIDTH 70
-#define _DECK_LENGHT 52
+#define _DECK_LENGTH 52
+#define _CARD_OFFSET_X 30
+#define _OVERLAP_OFFSET _CARD_WIDTH / 4 
 
-using namespace sf;
 using namespace std;
+using namespace sf;
 
+void takeCardsFromDeck(Player& player, Array<Card*>& deck) {
+	if (deck.get_size() == 0) {
+		return;
+	}
 
-int getCountofHittedCards(vector<Card*>& vector) {
-    int counter = 0;
-    for (int i = 0; i < vector.size(); i++) {
-        if (vector[i]->getIsHitted()) {
-            counter++;
-        }
-    }
-    return counter;
+	if (player.getCards().get_size() >= 6) {
+		return;
+	}
+	
+	Card* card;
+	int size = 6 - player.getCards().get_size();
+
+	for (int i = 0; i < size; i++) {
+		card = nullptr;
+
+		int index = rand() % deck.get_size();
+		card = deck[index];
+		deck.erase(index);
+
+		player.getCards().push_back(card);
+	}
 }
 
-Card* getCardFromDeck(Card** deck) {
-    Card* card = nullptr;
-    do {
-        card = deck[rand() % 52];
-    } while (card->getIsGiven());
-    card->setIsGiven(true);
-    return card;
+void setInitPosition(Player& player) {
+	for (int i = 0; i < player.getCards().get_size(); i++) {
+		player.getCards()[i]->getSprite()->setPosition(player.x + i * (_CARD_WIDTH + _CARD_OFFSET_X) - ((player.getCards().get_size() - 6) * 50), player.y);
+	}
 }
 
-int getCountofFreeCards(vector<Card*>& vector) {
-    int counter = 0;
-    for (int i = 0; i < vector.size(); i++) {
-        if (!vector[i]->getIsInAction()) {
-            counter++;
-        }
-    }
-    return counter;
+bool rankExistOnBoard(Array<Card*>& cardsOnBoard, Rank rank) {
+	for (int i = 0; i < cardsOnBoard.get_size(); i++) {
+		if (cardsOnBoard[i]->getRank() == rank) {
+			return true;
+		}
+	}
+	return false;
 }
 
-void takeCards(Player & attacker, Player & defender, Card** deck) {
-    for (int i = 0; i < attacker.getCards().size(); i++) {
-        if (attacker.getCards()[i]->getIsInAction()) {
-            defender.getCards().push_back(attacker.getCards()[i]);
-            attacker.getCards()[i] = getCardFromDeck(deck);
-            attacker.getCards()[i]->getSprite()->setPosition(attacker.x + i * 100, attacker.y);
-
-        }
-    }
-    for (int i = 0; i < defender.getCards().size(); i++) {
-        defender.getCards()[i]->getSprite()->setPosition(defender.x - ((defender.getCards().size() - 6) * 50) + i * 100, defender.y);
-        defender.getCards()[i]->setIsInAction(false);
-    }
+void findAvailableCards(Player& player, Array<Card*>& cardsOnBoard, Array<Card*>& availableCards) {
+	for (int i = 0; i < player.getCards().get_size(); i++) {
+		if (rankExistOnBoard(cardsOnBoard, player.getCards()[i]->getRank())) {
+			availableCards.push_back(player.getCards()[i]);
+		}
+	}
 }
 
-void nextCards(vector<Card*>& attackerCards, vector<Card*>& defenderCards, Card** deck) {
-    if (getCountofFreeCards(attackerCards) < 6) {
-        for (int i = 0; i < attackerCards.size(); i++) {
-            if (attackerCards[i]->getIsInAction() ) {
-                attackerCards[i] = getCardFromDeck(deck);
-                attackerCards[i]->getSprite()->setPosition(350 - ((attackerCards.size() - 6) * 50) + i * 100, 500);
-            }
-        }
-
-    }
-    if (getCountofFreeCards(defenderCards) < 6) {
-        for (int i = 0; i < defenderCards.size(); i++) {
-            if (defenderCards[i]->getIsInAction()) {
-                defenderCards[i] = getCardFromDeck(deck);
-                defenderCards[i]->getSprite()->setPosition(350 - ((defenderCards.size() - 6) * 50) + i * 100, 150);
-            }
-        }
-    }
+Card* findMinCard(Array<Card*>& cards) {
+	if (cards.get_size() == 0) {
+		return nullptr;
+	}
+	Card* minCard = cards[0];
+	for (int i = 0; i < cards.get_size(); i++) {
+		if (minCard->getRank() > cards[i]->getRank()) {
+			minCard = cards[i];
+		}
+	}
+	return minCard;
 }
 
-void botDefend(Player & bot, Player & user, Card* attackerCard, Card** deck) {
-
-    bool isHitted = false;
-
-    for (int i = 0; i < bot.getCards().size(); i++) {
-        if (!bot.getCards()[i]->getIsInAction() && attackerCard->getSuit() == bot.getCards()[i]->getSuit() && attackerCard->getRank() < bot.getCards()[i]->getRank()) {
-            bot.getCards()[i]->getSprite()->setPosition(attackerCard->getSprite()->getPosition().x + _CARD_WIDTH / 6, attackerCard->getSprite()->getPosition().y + _CARD_HEIGHT / 6);
-            attackerCard->setIsHitted(true);
-            bot.getCards()[i]->setIsInAction(true);
-            isHitted = true;
-            break;
-        }
-    }
-    if (!isHitted) {
-        takeCards(user, bot, deck);
-    }
+Card* findCorrectCard(Player& player, Array<Card*>& cardsOnBoard) {
+	if (cardsOnBoard.get_size() > 0) {
+		Array<Card*> availableCards;
+		findAvailableCards(player, cardsOnBoard, availableCards);
+		return findMinCard(availableCards);
+	}
+	return findMinCard(player.getCards());
 }
 
-void botAttack(vector <Card*>& attackerCards , vector <Card*>& defenderCards) {
-    Card* minCard = attackerCards[0];
-    for (int i = 0; i < attackerCards.size(); i++) {
-        if (minCard->getRank() > attackerCards[i]->getRank()) {
-            minCard = attackerCards[i];
-        }
-    }
-    minCard->setIsInAction(true);
-    minCard->getSprite()->setPosition(330, 275);
+void takeCards(Player& player, Array<Card*>& cardsOnBoard) {
+	for (int i = 0; i < cardsOnBoard.get_size(); i++) {
+		cardsOnBoard[i]->setIsInAction(false);
+		cardsOnBoard[i]->setIsHitted(false);
+		player.getCards().push_back(cardsOnBoard[i]);
+	}
+	cardsOnBoard.clear();
 }
 
+//Card position on board, when even (парне) numbers attacker, odd (непарне) number defender
+void setCardOnBoardPosition(Array<Card*>& cardsOnBoard) {
+	for (int i = 0, j = 0; i < cardsOnBoard.get_size(); i++) {
+		int x = _BOARD_MIN_X + j * (_CARD_WIDTH + _CARD_OFFSET_X) + (i % 2 ? _OVERLAP_OFFSET : 0);
+		int y = _BOARD_MIN_Y + (i % 2 ? _OVERLAP_OFFSET : 0);
+		cardsOnBoard[i]->getSprite()->setPosition(x, y);
+		if (i % 2 != 0) {
+			j++;
+		}
+	}
+}
+
+bool addCardOnBoard(Player& player, Card* card, Array<Card*>& cardsOnBoard) {
+	if (card == nullptr) {
+		return false;
+	}
+
+	for (int i = 0; i < player.getCards().get_size(); i++) {
+		if (player.getCards()[i] == card) {
+			player.getCards().erase(i);
+			break;
+		}
+	}
+
+	cardsOnBoard.push_back(card);
+	setCardOnBoardPosition(cardsOnBoard);
+}
+
+bool defend(Player& player, Array<Card*>& cardsOnBoard) {
+	Card* card = cardsOnBoard[cardsOnBoard.get_size() - 1];
+	for (int i = 0; i < player.getCards().get_size(); i++) {
+		if (
+			!player.getCards()[i]->getIsInAction() &&
+			card->getRank() < player.getCards()[i]->getRank() &&
+			card->getSuit() == player.getCards()[i]->getSuit()
+			) {
+			card->setIsHitted(true);
+			player.getCards()[i]->setIsInAction(true);
+			addCardOnBoard(player, player.getCards()[i], cardsOnBoard);
+			return true;
+		}
+	}
+	return false;
+}
+
+int main() {
+
+	srand(time(0));
+
+	RenderWindow window(VideoMode(1280, 720), "Fool Game");
+
+	Texture t1, t2, t3, t4;
+	t1.loadFromFile("images/cards.png");
+	t2.loadFromFile("images/table.png");
+	t3.loadFromFile("images/coloda.png");
+	t4.loadFromFile("images/coloda.png");
 
 
+	Sprite s(t1);
+	Sprite stable(t2);
+	Sprite usedDeck(t3);
+	Sprite aviableDeck(t4);
 
-int main()
-{
-    RenderWindow window(VideoMode(1280, 720), "Game cards");
+	usedDeck.setPosition(100, 300);
+	aviableDeck.setPosition(1100, 300);
 
-    Card** deck = new Card* [_DECK_LENGHT];
+	Button buttonNext(1000, 630, 200, 60, "next");
+	Button buttonTake(70, 630, 200, 60, "take");
 
-    Texture t1, t2, t3, t4;
-    t1.loadFromFile("images/cards.png");
-    t2.loadFromFile("images/table.png");
-    t3.loadFromFile("images/coloda.png");
-    t4.loadFromFile("images/coloda.png");
+	bool isBotMove = false;
+	int inittop = NULL, initleft = NULL;
+	Card* draggedCard = nullptr;
+	Vector2f offset;
+	
+	//Coordinate user
+	Player user(350, 500);
+	Player bot(350, 150);
 
-    Sprite s(t1);
-    Sprite stable(t2);
-    Sprite usedDeck(t3);
-    Sprite aviableDeck(t4);
+	Array<Card*> deck;
+	Array<Card*> cardsOnBoard;
 
-    usedDeck.setPosition(100, 300);
-    aviableDeck.setPosition(1100, 300);
-
-    /*vector<Card*> player1Cards;
-    vector<Card*> player2Cards;*/
-
-    Player user(350, 150);
-    Player bot(350, 500);
-
-    bool isBotMove = false;
-
-    srand(time(0));
-
-    Button buttonNext(1000, 580, 200, 60, "next");
-    Button buttonTake(70, 580, 200, 60, "take");
-
-
-    // Сдесь создание кода колоды карт
+	//Card deck creation
     for (int j = 0; j < 4; j++) {
-        for (int i = 0; i < _DECK_LENGHT / 4; i++) {
-            deck[i + j * 13] = new Card(new Sprite(), (Suit)j, (Rank)i);
+        for (int i = 0; i < _DECK_LENGTH / 4; i++) {
+            deck.push_back(new Card(new Sprite(), (Suit)j, (Rank)i));
             deck[i + j * 13]->getSprite()->setTexture(t1);
             deck[i + j * 13]->getSprite()->setTextureRect(IntRect(_CARD_WIDTH * i, _CARD_HEIGHT * j, _CARD_WIDTH, _CARD_HEIGHT));
         }
     }
 
-    //Выдаёт карты
+	takeCardsFromDeck(user, deck);
+	takeCardsFromDeck(bot, deck);
 
-    for (int i = 0; i < 6; ++i) {
-        Card* card = nullptr;
-        do {
-            card = deck[rand() % 52];
-        } while (card->getIsGiven());
+	setInitPosition(user);
+	setInitPosition(bot);
 
-        card->setIsGiven(true);
-        user.getCards().push_back(card);
+	while (window.isOpen()) {
+		Vector2i mousePos = Mouse::getPosition(window);
+		Event event;
+		
+		while (window.pollEvent(event)) {
+			if (event.type == Event::Closed) {
+				window.close();
+			}
+			
+			//ButtonPressed
+			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
+				if (isBotMove && buttonTake.isClicked(Mouse::getPosition(window))) {
+					takeCards(user, cardsOnBoard);
+					takeCardsFromDeck(bot, deck);
 
-        card = nullptr;
-        do {
-            card = deck[rand() % 52];
-        } while (card->getIsGiven());
+					setInitPosition(user);
+					setInitPosition(bot);
 
-        card->setIsGiven(true);
-        bot.getCards().push_back(card);
+					addCardOnBoard(bot, findCorrectCard(bot, cardsOnBoard), cardsOnBoard);
+				}
+				
+				if (!isBotMove && buttonNext.isClicked(Mouse::getPosition(window))) {
+					takeCardsFromDeck(user, deck);
+					takeCardsFromDeck(bot, deck);
 
-        user.getCards()[i]->getSprite()->setPosition(350 + i * 100, 500);
-        bot.getCards()[i]->getSprite()->setPosition(350 + i * 100, 150);
-    }
+					setInitPosition(user);
+					setInitPosition(bot);
 
-    int inittop = NULL, initleft = NULL;
-    Card* draggedCard = nullptr;
-    Vector2f offset;
+					cardsOnBoard.clear();
 
-    while (window.isOpen())
-    {
-        Vector2i mousePos = Mouse::getPosition(window);
+					isBotMove = true;
 
-        Event event;
-        while (window.pollEvent(event))
-        { 
-            if (event.type == Event::Closed)
-                window.close();
+					addCardOnBoard(bot, findCorrectCard(bot, cardsOnBoard), cardsOnBoard);
 
-            if (event.type == Event::MouseButtonPressed)
-            {
-                if (event.mouseButton.button == Mouse::Left)
-                {
-                    if (buttonTake.isClicked(Mouse::getPosition(window))) {
-                        
-                    }
-                    if (buttonNext.isClicked(Mouse::getPosition(window))) {
-                        
-                        break;
-                    }
-                    for (int i = 0; i < user.getCards().size(); ++i)
-                    {
-                        if (user.getCards()[i]->getSprite()->getGlobalBounds().contains(mousePos.x, mousePos.y))
-                        {
-                            draggedCard = user.getCards()[i];
-                            offset = draggedCard->getSprite()->getPosition() - window.mapPixelToCoords(mousePos);
-                            inittop = draggedCard->getSprite()->getPosition().y;
-                            initleft = draggedCard->getSprite()->getPosition().x;
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (draggedCard != nullptr && event.type == Event::MouseButtonReleased)
-            {
-                if (event.mouseButton.button == Mouse::Left) {
-                    int top = draggedCard->getSprite()->getPosition().y;
-                    int left = draggedCard->getSprite()->getPosition().x;
-                    if (top > _BOARD_MAX_Y - _CARD_HEIGHT || top < _BOARD_MIN_Y || left < _BOARD_MIN_X || left > _BOARD_MAX_X - _CARD_WIDTH) {
-                        draggedCard->getSprite()->setPosition(initleft, inittop);
-                        break;
-                    }
+					break;
+				}
+					
+				if (mousePos.y > 500) {
+					for (int i = 0; i < user.getCards().get_size(); ++i)
+					{
+						if (user.getCards()[i]->getSprite()->getGlobalBounds().contains(mousePos.x, mousePos.y))
+						{
+							draggedCard = user.getCards()[i];
+							offset = draggedCard->getSprite()->getPosition() - window.mapPixelToCoords(mousePos);
+							inittop = draggedCard->getSprite()->getPosition().y;
+							initleft = draggedCard->getSprite()->getPosition().x;
+							break;
+						}
+					}
 
-                    draggedCard->setIsInAction(true);
+				}
+			}
+			
+			//ButtonReleased
+			if (event.type == Event::MouseButtonReleased && event.mouseButton.button == Mouse::Left) {
+				if (draggedCard == nullptr) {
+					break;
+				}
 
-                    if (isBotMove) {
-                        
-                    }
-                    else {
-                        for (int i = 0; i < user.getCards().size(); i++) {
-                            if (user.getCards()[i]->getIsInAction() && !user.getCards()[i]->getIsHitted()) {
-                                user.getCards()[i]->getSprite()->setPosition(330 + getCountofHittedCards(user.getCards()) * 100, 275);
-                                botDefend(bot, user, user.getCards()[i], deck);
-                                break;
-                            }
-                        }
-                    }
+				int top = draggedCard->getSprite()->getPosition().y;
+				int left = draggedCard->getSprite()->getPosition().x;
 
+				if (top > _BOARD_MAX_Y - _CARD_HEIGHT || top < _BOARD_MIN_Y || left < _BOARD_MIN_X || left > _BOARD_MAX_X - _CARD_WIDTH) {
+					draggedCard->getSprite()->setPosition(initleft, inittop);
+					draggedCard = nullptr;
+					break;
+				}
 
+				draggedCard->setIsInAction(true);
 
-                 
-                }
-                draggedCard = nullptr;
-            }
+				if (isBotMove) {
+					if (
+						cardsOnBoard[cardsOnBoard.get_size() - 1]->getSuit() == draggedCard->getSuit() &&
+						draggedCard->getRank() > cardsOnBoard[cardsOnBoard.get_size() - 1]->getRank()
+						) {
+						cardsOnBoard[cardsOnBoard.get_size() - 1]->setIsHitted(true);
 
-        }
+						addCardOnBoard(user, draggedCard, cardsOnBoard);
 
-        if (draggedCard)
-        {
-            draggedCard->getSprite()->setPosition(window.mapPixelToCoords(mousePos) + offset);
-        }
+						if (!addCardOnBoard(bot, findCorrectCard(bot, cardsOnBoard), cardsOnBoard)) {
+							isBotMove = false;
+							takeCardsFromDeck(bot, deck);
+							takeCardsFromDeck(user, deck);
 
-        window.clear();
-        window.draw(stable);
-        window.draw(usedDeck);
-        window.draw(aviableDeck);
-        buttonNext.draw(window);
-        buttonTake.draw(window);
+							cardsOnBoard.clear();
+						}
+						setInitPosition(user);
+						setInitPosition(bot);
+					}
+				}
+				else {
+					if (cardsOnBoard.get_size() > 0 && !rankExistOnBoard(cardsOnBoard, draggedCard->getRank())) {
+						draggedCard->getSprite()->setPosition(initleft, inittop);
+						draggedCard = nullptr;
+						break;
+					}
 
-        for (int i = 0; i < user.getCards().size(); i++) {
-            window.draw(*user.getCards()[i]->getSprite());
-        }
-        
-        for (int i = 0; i < bot.getCards().size(); i++) {
-            window.draw(*bot.getCards()[i]->getSprite());
-        }
+					addCardOnBoard(user, draggedCard, cardsOnBoard);
 
-        for (int i = 0; i < user.getCards().size(); ++i) {
-            for (int j = 0; j < bot.getCards().size(); j++) {
-                if (bot.getCards()[j]->getSprite()->getGlobalBounds().intersects(user.getCards()[i]->getSprite()->getGlobalBounds())) {
-                    if (!isBotMove) {
-                        window.draw(*user.getCards()[i]->getSprite());
-                        window.draw(*bot.getCards()[j]->getSprite());
-                    }
-                    else {
-                        window.draw(*bot.getCards()[j]->getSprite());
-                        window.draw(*user.getCards()[i]->getSprite());
-                    }
-                }
-            }
+					if (!defend(bot, cardsOnBoard)) {
+						takeCards(bot, cardsOnBoard);
+						takeCardsFromDeck(user, deck);
+					}
+					setInitPosition(user);
+					setInitPosition(bot);
+				}
+				draggedCard = nullptr;
+			}
+		}
 
+		if (draggedCard)
+		{
+			draggedCard->getSprite()->setPosition(window.mapPixelToCoords(mousePos) + offset);
+		}
 
-        }
+		window.clear();
 
-        window.display();
-    }
+		window.draw(stable);
 
-    return 0;
+		window.draw(usedDeck);
+		window.draw(aviableDeck);
+		buttonNext.draw(window);
+		buttonTake.draw(window);
+
+		for (int i = 0; i < user.getCards().get_size(); i++) {
+			window.draw(*user.getCards()[i]->getSprite());
+		}
+
+		for (int i = 0; i < bot.getCards().get_size(); i++) {
+			window.draw(*bot.getCards()[i]->getSprite());
+		}
+
+		for (int i = 0; i < cardsOnBoard.get_size(); i++) {
+			window.draw(*cardsOnBoard[i]->getSprite());
+		}
+		window.display();
+
+	}
+	cin.get();
 }

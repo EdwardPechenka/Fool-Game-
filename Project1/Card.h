@@ -1,4 +1,5 @@
 #pragma once
+
 #include <SFML/Graphics.hpp>
 
 using namespace sf;
@@ -8,39 +9,51 @@ enum class Suit {
 };
 
 enum class Rank {
-   Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King,
+    Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King,
 };
 
 class Card
 {
 public:
-	Card(Sprite* sprite, Suit suit, Rank rank);
-	~Card();
+    Card(Sprite* sprite, Suit suit, Rank rank) : sprite(sprite), suit(suit), rank(rank) {}
+    ~Card() {}
 
-	Card();
+    Card() {}
 
-	Sprite* getSprite() const;
+    Sprite* getSprite() const {
+        return sprite;
+    }
 
-	bool getIsGiven() const;
-	void setIsGiven(bool value);
+    Suit getSuit() const {
+        return suit;
+    }
+    Rank getRank() const {
+        return rank;
+    }
 
-	Suit getSuit() const;
-	Rank getRank() const;
+    bool getIsInAction() const {
+        return isInAction;
+    }
+    void setIsInAction(bool value) {
+        isInAction = value;
+    }
 
-	bool getIsInAction() const;
-	void setIsInAction(bool value);
+    bool getIsHitted() const {
+        return isHitted;
+    }
+    void setIsHitted(bool value) {
+        isHitted = value;
+    }
 
-	bool getIsHitted() const;
-	void setIsHitted(bool value);
+    bool operator == (const Card& other) const {
+        return suit == other.suit && rank == other.rank;
+    }
 
 private:
-	Sprite* sprite;
-	Suit suit;
-	Rank rank;
-	bool isGiven = false;
-	bool isInAction = false;
-	bool isHitted = false;
-
-
-
+    Sprite* sprite;
+    Suit suit;
+    Rank rank;
+    bool isInAction = false;
+    bool isHitted = false;
 };
+

@@ -1,14 +1,22 @@
 #pragma once
 
-class Button {
+#include <iostream>
+#include "SFML/Graphics.hpp"
+
+using namespace std;
+using namespace sf;
+
+class Button
+{
 public:
-    Button(float x, float y, float width, float height, const String& text) {
+	//String from SFML
+	Button(int x, int y, int width, int height, const String & text) {
         shape.setPosition(x, y);
         shape.setSize(Vector2f(width, height));
         shape.setFillColor(Color::White);
 
         if (!font.loadFromFile("arialmt.ttf")) {
-            // handle error
+            cout << "font not found" << endl;
         }
 
         buttonText.setFont(font);
@@ -19,9 +27,11 @@ public:
             x + (width - buttonText.getLocalBounds().width) / 2,
             y + (height - buttonText.getLocalBounds().height) / 2 - buttonText.getLocalBounds().height / 2
         );
-    }
 
-    void draw(RenderWindow& window) {
+	}
+    ~Button() {}
+
+    void draw(RenderWindow & window) {
         window.draw(shape);
         window.draw(buttonText);
     }
@@ -32,6 +42,6 @@ public:
 
 private:
     RectangleShape shape;
-    Text buttonText;
     Font font;
+    Text buttonText;
 };
